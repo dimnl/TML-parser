@@ -1,0 +1,33 @@
+{{  
+    """
+    This mapping solves Example 2.1 from the Thesis.
+    """ 
+}}
+{{ Output('output_id', location='internal', serialization='turtle', de_duplication=False) }}
+
+
+prefixes:
+  rr: "http://www.w3.org/ns/r2rml#"
+  foaf: "http://xmlns.com/foaf/0.1/"
+  rel: "http://www.perceive.net/schemas/relationship/"
+  ex: "http://example.com/ns#"
+
+mappings:
+  person:
+    sources:
+      - [http://localhost/persons~postgresql]
+    s: http://data.example.com/person/$(person_id)
+    po:
+      - [a, foaf:Person]
+      - [foaf:name, $(name)]
+      - [rel:childOf, [http://data.example.com/person/$(mother_person_id)~iri, http://data.example.com/person/$(father_person_id)~iri]]
+      - [ex:bornIn, http://data.example.com/country/$(born_in_country_id)~iri]
+  country:
+    sources:
+      - [http://localhost/countries~postgresql]
+    s: http://data.example.com/country/$(country_id)
+    po:
+      - [a, ex:Country]
+      - [ex:countryName, $(name)]
+      - [ex:countryCapital, $(capital)]
+      - [ex:countryLanguage, $(language)]
