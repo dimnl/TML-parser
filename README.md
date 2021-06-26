@@ -7,9 +7,9 @@ title: TML-parser README
 
 > Made at :house: by [Dim Hoogeveen](https://www.linkedin.com/in/dimhoogeveen/?locale=en_US)  as part of his Master Thesis. 
 
->     The involved parties of this thesis are [OEG](https://oeg.fi.upm.es/) 
->     (part of [fi](http://fi.upm.es/) within [UPM](https://www.upm.es/))
->     and [TUe](https://www.tue.nl/en/).
+> The involved parties of this thesis are [OEG](https://oeg.fi.upm.es/) 
+> (part of [fi](http://fi.upm.es/) within [UPM](https://www.upm.es/))
+> and [TUe](https://www.tue.nl/en/).
 
 ## Install and run locally
 
