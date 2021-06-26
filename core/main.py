@@ -61,7 +61,7 @@ FILE_UPLOADED = INPUT_CONTAINER.file_uploader('Choose a TML file to parse',
                                               help='The filename extension does not matter')
 
 with INPUT_CONTAINER.beta_expander('Alternatively, click here to write or paste TML mapping directly'):
-    FILE_PASTED = st.text_area('Mapping textual input',
+    FILE_PASTED = st.text_area(label='Mapping textual input',
                                help='If a file is uploaded, delete that first to parse the pasted TML.')
     FILENAME_PASTED = st.text_input('Optionally, specify mapping name to be used for creating the output',
                                     value='example-mapping.ttl')
