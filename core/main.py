@@ -4,6 +4,7 @@ import uuid
 
 import streamlit as st
 
+import translations
 from TMLParserEnvironment import TMLParserEnvironment
 
 ################################################################################
@@ -15,14 +16,21 @@ st.set_page_config(page_title="TML Parser", page_icon=":open_book:", layout="wid
 # Make website sidebar
 st.sidebar.title("Configurations")
 st.sidebar.subheader('Engine')
-ENGINE_CHOSEN = st.sidebar.selectbox("Choose a KGC engine", ['Ontop', 'Morph-RDB', 'RMLMapper', 'RMLStreamer', 'RocketRML'])
+ENGINE_CHOSEN = st.sidebar.selectbox("Choose a KGC engine",
+                                     ['Ontop', 'Morph-RDB', 'RMLMapper', 'RocketRML', 'SDM-RDFizer', 'RMLStreamer'])
+ENGINE_CONTAINER = st.sidebar.beta_container()
+
+if ENGINE_CHOSEN == 'Morph-RDB':
+    OS_NAME = ENGINE_CONTAINER.selectbox('Choose your OS for the config command', ["WINDOWS", "MACOS", "LINUX"])
+else:
+    OS_NAME = None
+
 st.sidebar.subheader('Input')
 MAPPING_LANGUAGE_IN = st.sidebar.selectbox("Choose the language of the input mapping",
-                                           ['R2RML', 'RML', 'SPARQL-Generate', 'ShExML'])
+                                           ['R2RML', 'RML', 'YARRRML', 'SPARQL-Generate', 'ShExML'])
 st.sidebar.subheader('Output')
 MAPPING_LANGUAGE_OUT = st.sidebar.selectbox("Choose the language of the output mapping",
-                                            ['R2RML', 'RML', 'SPARQL-Generate', 'ShExML'])
-
+                                            ['R2RML', 'RML', 'YARRRML', 'SPARQL-Generate', 'ShExML'])
 
 st.sidebar.markdown(
     """
@@ -58,28 +66,12 @@ with INPUT_CONTAINER.beta_expander('Alternatively, click here to write or paste 
     FILENAME_PASTED = st.text_input('Optionally, specify mapping name to be used for creating the output',
                                     value='example-mapping.ttl')
 
-OUTPUT_CONTAINER.header('Output')
-OUTPUT_CONTAINER.markdown(f'Generated for the **{ENGINE_CHOSEN}** knowledge graph construction engine. '
-                          f'The original mapping uses  **{MAPPING_LANGUAGE_IN}** as mapping language, '
-                          f'while the outputted mapping language is **{MAPPING_LANGUAGE_OUT}**. ')
-
-OUTPUT_MAPPING, OUTPUT_CONFIG = OUTPUT_CONTAINER.beta_columns(2)
-OUTPUT_MAPPING.subheader('Mapping')
-OUTPUT_CONFIG.subheader('Configurations')
-
 FOOTER_CONTAINER.markdown('------')
 sidebar_col_oeg, sidebar_col_fi, sidebar_col_upm, sidebar_col_tue = FOOTER_CONTAINER.beta_columns(4)
-with sidebar_col_oeg:
-    st.image('./img/oeg.png', width=150)
-    # st.markdown("[OEG](https://oeg.fi.upm.es/)")
-with sidebar_col_fi:
-    st.image('./img/fi.png', width=120)
-    # st.markdown("[fi](http://fi.upm.es/)")
-with sidebar_col_upm:
-    st.image('./img/upm.png', width=150)
-    # st.markdown("[UPM](https://www.upm.es/)")
-with sidebar_col_tue:
-    st.image('./img/TUe.png', width=150)
+sidebar_col_oeg.image('./img/oeg.png', width=150, use_column_width='auto')
+sidebar_col_fi.image('./img/fi.png', width=120, use_column_width='auto')
+sidebar_col_upm.image('./img/upm.png', width=150, use_column_width='auto')
+sidebar_col_tue.image('./img/TUe.png', width=150, use_column_width='auto')
 
 
 ################################################################################
@@ -98,23 +90,29 @@ def main():
         mapping_name = FILENAME_PASTED
 
     if content_parsed is not None:
-        OUTPUT_MAPPING.markdown(generate_download_link(content_parsed.render(), mapping_name), unsafe_allow_html=True)
-        OUTPUT_MAPPING.code(content_parsed.render())
+        OUTPUT_CONTAINER.header('Output')
+        OUTPUT_CONTAINER.markdown(f'Generated for the **{ENGINE_CHOSEN}** knowledge graph construction engine. '
+                                  f'The original mapping uses  **{MAPPING_LANGUAGE_IN}** as mapping language, '
+                                  f'while the outputted mapping language is **{MAPPING_LANGUAGE_OUT}**. ')
+
+        output_mapping, output_config = OUTPUT_CONTAINER.beta_columns(2)
+        output_mapping.subheader('Mapping')
+        output_config.subheader('Configurations')
+
+        output_mapping.markdown(generate_download_link(content_parsed.render(), mapping_name), unsafe_allow_html=True)
+        output_mapping.code(content_parsed.render())
 
         for (output_id, output) in Observer.output.items():
-            if ENGINE_CHOSEN == 'Ontop':
-                config_cli = output.translate_to_ontop(mapping_name)
-            elif ENGINE_CHOSEN == 'Morph-RDB':
-                config_cli = output.translate_to_rmlmapper(mapping_name)  # TODO
-            elif ENGINE_CHOSEN == 'RMLMapper':
-                config_cli = output.translate_to_rmlmapper(mapping_name)
-            elif ENGINE_CHOSEN == 'RMLStreamer':
-                config_cli = output.translate_to_rmlstreamer(mapping_name)
-            elif ENGINE_CHOSEN == 'RocketRML':
-                config_cli = output.translate_to_rmlmapper(mapping_name)  # TODO
+            config_cli, config_file, config_file_name = output.translate(ENGINE_CHOSEN, mapping_name, OS_NAME)
 
-            OUTPUT_CONFIG.write('Command for command line interface')
-            OUTPUT_CONFIG.code(config_cli)
+            if config_cli is not None:
+                output_config.write('Command for command line interface')
+                output_config.code(config_cli)
+
+            if config_file is not None:
+                output_config.write('Configuration file')
+                output_config.markdown(generate_download_link(config_file, config_file_name), unsafe_allow_html=True)
+                output_config.code(config_file)
 
 
 ################################################################################
@@ -216,34 +214,25 @@ class Output(object):
     def __repr__(self):
         return ''  # This is output printed to mapping in the place where the function was called
 
-    def translate_to_ontop(self, mapping_name):
-        cli_command = '/.ontop'
-        cli_command += ' materialize'
-        cli_command += ' --mapping ' + mapping_name
-        cli_command += ' --output ' + self.location
-        cli_command += ' --format ' + self.serialization
-
-        return cli_command
-
-    def translate_to_rmlmapper(self, mapping_name):
-        cli_command = 'java -jar rmlmapper.jar'
-        cli_command += ' --mappingfile ' + mapping_name
-        cli_command += ' --outputfile ' + self.location
-        cli_command += ' --serialization ' + self.serialization
-        if self.de_duplication:
-            cli_command += ' --duplicates'
-
-        return cli_command
-
-    def translate_to_rmlstreamer(self, mapping_name):
-        cli_command = 'FLINK_BIN run RMLStreamer-<version>.jar'
-        cli_command += ' toFile'  # or ToTCPSocket or toKafka
-        cli_command += ' --mapping-file ' + mapping_name
-        cli_command += ' --output-path ' + self.location
-        if self.serialization == 'jsonld':
-            cli_command += ' --json-ld'
-
-        return cli_command
+    def translate(self, engine, mapping_name, os_name):
+        if engine == 'Ontop':
+            return translations.output_translate_to_ontop(mapping_name, self.location, self.serialization,
+                                                          self.de_duplication)
+        elif engine == 'Morph-RDB':
+            return translations.output_translate_to_morphrdb(mapping_name, os_name, self.location, self.serialization,
+                                                             self.de_duplication)
+        elif engine == 'RMLMapper':
+            return translations.output_translate_to_rmlmapper(mapping_name, self.location, self.serialization,
+                                                              self.de_duplication)
+        elif engine == 'RocketRML':
+            return translations.output_translate_to_rocketrml(mapping_name, self.location, self.serialization,
+                                                              self.de_duplication)
+        elif engine == 'SDM-RDFizer':
+            return translations.output_translate_to_sdmrdfizer(mapping_name, self.location, self.serialization,
+                                                               self.de_duplication)
+        elif engine == 'RMLStreamer':
+            return translations.output_translate_to_rmlstreamer(mapping_name, self.location, self.serialization,
+                                                                self.de_duplication)
 
 
 @template_callable
@@ -263,8 +252,9 @@ class DataAccess(object):
     def __repr__(self):
         return ''
 
-    def print_name(self):
-        print(self.name)
+    def translate(self, engine):
+        # TODO implement
+        pass
 
 
 class Observer(object):
