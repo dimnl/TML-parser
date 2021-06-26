@@ -67,11 +67,12 @@ with INPUT_CONTAINER.beta_expander('Alternatively, click here to write or paste 
                                     value='example-mapping.ttl')
 
 FOOTER_CONTAINER.markdown('------')
+GITHUB_URL = 'https://raw.githubusercontent.com/dimnl/TML-parser/main/core/img/'
 sidebar_col_oeg, sidebar_col_fi, sidebar_col_upm, sidebar_col_tue = FOOTER_CONTAINER.beta_columns(4)
-sidebar_col_oeg.image('./img/oeg.png', width=150, use_column_width='auto')
-sidebar_col_fi.image('./img/fi.png', width=120, use_column_width='auto')
-sidebar_col_upm.image('./img/upm.png', width=150, use_column_width='auto')
-sidebar_col_tue.image('./img/TUe.png', width=150, use_column_width='auto')
+sidebar_col_oeg.image(GITHUB_URL + 'oeg.png', width=150, use_column_width='auto')
+sidebar_col_fi.image(GITHUB_URL + 'fi.png', width=120, use_column_width='auto')
+sidebar_col_upm.image(GITHUB_URL + 'upm.png', width=150, use_column_width='auto')
+sidebar_col_tue.image(GITHUB_URL + 'TUe.png', width=150, use_column_width='auto')
 
 
 ################################################################################
