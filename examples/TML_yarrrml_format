@@ -1,5 +1,4 @@
-{{ Output('output_id', location='internal', serialization='turtle', de_duplication=False) }}
-{{ Output('output_id2', location='internal', serialization='turtle', de_duplication=True) }}
+{{ Output('output_id', location='internal', serialization='turtle', de_duplication=True) }}
 {{ DataAccess('postgresDB', url='', user='admin', password='admin') }}
 
 prefixes:
