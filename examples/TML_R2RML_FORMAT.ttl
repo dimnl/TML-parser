@@ -1,0 +1,57 @@
+{{ Output('output_id', location='GoogleCloud', serialization='jsonld', de_duplication=False) }}
+{{ DataAccess('GoogleCloud', url='https://google.url/my_company:port', user='secure_admin', password='intern_should_not_get_this_password') }}
+
+{# Comments on the file can be placed like this, they will not be picked up by the Parser for anything #}
+
+@prefix rr: <http://www.w3.org/ns/r2rml#>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix rel: <http://www.perceive.net/schemas/relationship/>.
+@prefix ex: <http://example.com/ns#>.
+
+<#PersonsTriplesMap>
+    rr:logicalTable [ rr:tableName "PEOPLE" ];
+    rr:subjectMap [
+        rr:template "http://data.example.com/person/{person_id}";
+        rr:class foaf:Person;
+    ];
+    rr:predicateObjectMap [
+        rr:predicate foaf:name;
+        rr:objectMap [ rr:column "name" ];
+    ]; 
+    rr:predicateObjectMap [
+        rr:predicate rel:childOf;
+        rr:objectMap [ rr:template "http://data.example.com/person/{mother_person_id}" ];
+    ]; {# This maps a mother to her child #}
+    rr:predicateObjectMap [
+        rr:predicate rel:childOf;
+        rr:objectMap [ rr:template "http://data.example.com/person/{father_person_id}" ];
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ex:bornIn;
+        rr:objectMap [
+            rr:parentTriplesMap <#CountriesTriplesMap>;
+            rr:joinCondition [
+                rr:child "born_in_country_id";
+                rr:parent "country_id";
+            ];
+        ];
+    ].
+    
+<#CountriesTriplesMap>
+    rr:logicalTable [ rr:tableName "COUNTRIES" ];
+    rr:subjectMap [
+        rr:template "http://data.example.com/country/{country_id}";
+        rr:class ex:Country;
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ex:countryName;
+        rr:objectMap [ rr:column "name" ];
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ex:countryCapital;
+        rr:objectMap [ rr:column "capital" ];
+    ];
+    rr:predicateObjectMap [
+        rr:predicate ex:countryLanguage;
+        rr:objectMap [ rr:column "language" ];
+    ].
