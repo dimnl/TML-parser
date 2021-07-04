@@ -6,6 +6,7 @@ import streamlit as st
 
 import translations
 from TMLParserEnvironment import TMLParserEnvironment
+import statics
 
 ################################################################################
 # Website structure
@@ -16,21 +17,27 @@ st.set_page_config(page_title="TML Parser", page_icon=":open_book:", layout="wid
 # Make website sidebar
 st.sidebar.title("Configurations")
 st.sidebar.subheader('Engine')
-ENGINE_CHOSEN = st.sidebar.selectbox("Choose a KGC engine",
-                                     ['Ontop', 'Morph-RDB', 'RMLMapper', 'RocketRML', 'SDM-RDFizer', 'RMLStreamer'])
+ENGINE_CHOSEN = st.sidebar.selectbox("Choose a KGC engine", statics.Engines.get_all())
 ENGINE_CONTAINER = st.sidebar.beta_container()
 
-if ENGINE_CHOSEN == 'Morph-RDB':
-    OS_NAME = ENGINE_CONTAINER.selectbox('Choose your OS for the config command', ["WINDOWS", "MACOS", "LINUX"])
+
+if ENGINE_CHOSEN == statics.Engines.MORPH_RDB:
+    OS_NAME = ENGINE_CONTAINER.selectbox('Choose your OS for the config command', statics.OperatingSystems.get_all())
 else:
     OS_NAME = None
 
+if ENGINE_CHOSEN  == statics.Engines.RMLSTREAMER \
+        or (ENGINE_CHOSEN ==  statics.Engines.MORPH_RDB and OS_NAME == statics.OperatingSystems.WINDOWS):
+    VERSION_ENGINE = ENGINE_CONTAINER.text_input("Input the engine version for the config command")
+else:
+    VERSION_ENGINE = None
+
 st.sidebar.subheader('Input')
 MAPPING_LANGUAGE_IN = st.sidebar.selectbox("Choose the language of the input mapping",
-                                           ['R2RML', 'RML', 'YARRRML', 'SPARQL-Generate', 'ShExML'])
+                                           statics.MappingLanguages.get_all())
 st.sidebar.subheader('Output')
 MAPPING_LANGUAGE_OUT = st.sidebar.selectbox("Choose the language of the output mapping",
-                                            ['R2RML', 'RML', 'YARRRML', 'SPARQL-Generate', 'ShExML'])
+                                            statics.MappingLanguages.get_all())
 
 st.sidebar.markdown(
     """
@@ -38,7 +45,7 @@ st.sidebar.markdown(
     
     Source code freely available at [GitHub](https://github.com/dimnl/TML-parser).
     
-    Made at :house: by [Dim Hoogeveen](https://www.linkedin.com/in/dimhoogeveen/?locale=en_US) 
+    Made at :house: by [Dim Hoogeveen](https://dimhoogeveen.com/) 
     as part of his Master Thesis. 
     
     The involved parties of this thesis are [OEG](https://oeg.fi.upm.es/) 
@@ -67,12 +74,12 @@ with INPUT_CONTAINER.beta_expander('Alternatively, click here to write or paste 
                                     value='example-mapping.ttl')
 
 FOOTER_CONTAINER.markdown('------')
-GITHUB_URL = 'https://raw.githubusercontent.com/dimnl/TML-parser/main/core/img/'
+IMG_FOLDER_URL = 'https://raw.githubusercontent.com/dimnl/TML-parser/main/core/img/'
 sidebar_col_oeg, sidebar_col_fi, sidebar_col_upm, sidebar_col_tue = FOOTER_CONTAINER.beta_columns(4)
-sidebar_col_oeg.image(GITHUB_URL + 'oeg.png', width=150, use_column_width='auto')
-sidebar_col_fi.image(GITHUB_URL + 'fi.png', width=120, use_column_width='auto')
-sidebar_col_upm.image(GITHUB_URL + 'upm.png', width=150, use_column_width='auto')
-sidebar_col_tue.image(GITHUB_URL + 'TUe.png', width=150, use_column_width='auto')
+sidebar_col_oeg.image(IMG_FOLDER_URL + 'oeg.png', width=150, use_column_width='auto')
+sidebar_col_fi.image(IMG_FOLDER_URL + 'fi.png', width=120, use_column_width='auto')
+sidebar_col_upm.image(IMG_FOLDER_URL + 'upm.png', width=150, use_column_width='auto')
+sidebar_col_tue.image(IMG_FOLDER_URL + 'TUe.png', width=150, use_column_width='auto')
 
 
 ################################################################################
@@ -104,7 +111,20 @@ def main():
         output_mapping.code(content_parsed.render())
 
         for (output_id, output) in Observer.output.items():
-            config_cli, config_file, config_file_name = output.translate(ENGINE_CHOSEN, mapping_name, OS_NAME)
+            config_cli, config_file, config_file_name, warnings = output.translate(ENGINE_CHOSEN, mapping_name, OS_NAME,
+                                                                                   VERSION_ENGINE)
+
+            for (name, data_access) in Observer.data_access.items():
+                if name == output.get_location():
+                    config_file_data_access, config_file_name_data_access = data_access.translate(ENGINE_CHOSEN)
+                    if config_file is not None and config_file_data_access is not None:
+                        config_file += '\n' + config_file_data_access
+                    else:
+                        config_file = config_file_data_access
+                        config_file_name = config_file_name_data_access
+
+            if warnings is not None:
+                output_config.warning(warnings)
 
             if config_cli is not None:
                 output_config.write('Command for command line interface')
@@ -128,7 +148,7 @@ def get_environment():
     Returns: TMLParserEnvironment
 
     """
-    return TMLParserEnvironment(autoescape='')
+    return TMLParserEnvironment()
 
 
 def template_callable(obj):
@@ -213,27 +233,14 @@ class Output(object):
         Observer.output.update({output_id: self})
 
     def __repr__(self):
-        return ''  # This is output printed to mapping in the place where the function was called
+        return ''  # This is the output printed to  the mapping in the place where the function was called.
 
-    def translate(self, engine, mapping_name, os_name):
-        if engine == 'Ontop':
-            return translations.output_translate_to_ontop(mapping_name, self.location, self.serialization,
-                                                          self.de_duplication)
-        elif engine == 'Morph-RDB':
-            return translations.output_translate_to_morphrdb(mapping_name, os_name, self.location, self.serialization,
-                                                             self.de_duplication)
-        elif engine == 'RMLMapper':
-            return translations.output_translate_to_rmlmapper(mapping_name, self.location, self.serialization,
-                                                              self.de_duplication)
-        elif engine == 'RocketRML':
-            return translations.output_translate_to_rocketrml(mapping_name, self.location, self.serialization,
-                                                              self.de_duplication)
-        elif engine == 'SDM-RDFizer':
-            return translations.output_translate_to_sdmrdfizer(mapping_name, self.location, self.serialization,
-                                                               self.de_duplication)
-        elif engine == 'RMLStreamer':
-            return translations.output_translate_to_rmlstreamer(mapping_name, self.location, self.serialization,
-                                                                self.de_duplication)
+    def get_location(self):
+        return self.location
+
+    def translate(self, engine, mapping_name, os_name, version_engine):
+        return translations.output_translate(engine, mapping_name, os_name, version_engine, self.location,
+                                             self.serialization, self.de_duplication)
 
 
 @template_callable
@@ -254,8 +261,7 @@ class DataAccess(object):
         return ''
 
     def translate(self, engine):
-        # TODO implement
-        pass
+        return translations.data_access_translate(engine, self.name, self.url, self.user, self.password)
 
 
 class Observer(object):
